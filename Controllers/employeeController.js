@@ -1,100 +1,119 @@
-// Controllers\employeeController.js
-
 const Employee = require("../models/Employee");
 const Department = require("../models/Department");
-const mongoose = require("mongoose");
-const ObjectId = mongoose.Types.ObjectId;
+const { v4: uuidv4 } = require("uuid");
+const bcrypt = require("bcrypt");
 
-///////////////////////
-////
-// اضافه موظف
-////
-///////////////////////
-
-exports.createEmployee = async (req, res) => {
+// تسجيل موظف (اختياري)
+exports.registerEmployee = async (req, res) => {
   try {
-    const existing = await Employee.findOne({
-      employeeId: req.body.employeeId,
+    const {
+      name,
+      email,
+      phone,
+      age,
+      password,
+      departmentId,
+      subDepartmentName,
+    } = req.body;
+
+    const existing = await Employee.findOne({ email });
+    if (existing)
+      return res.status(400).json({ message: "الإيميل موجود مسبقاً" });
+
+    const employeeId = uuidv4();
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const employee = await Employee.create({
+      employeeId,
+      name,
+      email,
+      phone,
+      age,
+      password: hashedPassword,
+      departmentId,
+      subDepartmentName,
     });
-    if (existing) {
-      return res
-        .status(400)
-        .json({ message: "هذا الرقم الوظيفي موجود مسبقًا" });
-    }
 
-    const employee = await Employee.create(req.body);
-
-    await Department.findByIdAndUpdate(employee.department, {
-      $inc: { employeeCount: 1 },
-    });
-
-    res.status(201).json({ message: "تم إضافة الموظف", employee });
+    res.status(201).json({ message: "تم تسجيل الموظف", employee });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "حدث خطأ" });
   }
 };
 
-///////////////////////
-////
-// جلب موظفين حسب القسم
-////
-///////////////////////
-exports.getEmployeesByDepartment = async (req, res) => {
+// إضافة موظف لقسم فرعي
+exports.addEmployeeToSub = async (req, res) => {
   try {
-    const { departmentId } = req.params;
+    const {
+      departmentId,
+      subDepartmentId,
+      name,
+      phone,
+      age,
+      employeeId,
+      role,
+      password,
+    } = req.body;
 
-    const employees = await Employee.find({
-      department: departmentId,
-    }).populate("department", "name");
-
-    res.status(200).json(employees);
-  } catch (error) {
-    res.status(500).json({
-      message: "فشل في جلب موظفين القسم",
-      error: error.message,
-    });
-  }
-};
-
-///////////////////////
-////
-// جلب عدد كل الموظفين
-////
-///////////////////////
-exports.getEmployeesCount = async (req, res) => {
-  try {
-    const count = await Employee.countDocuments();
-
-    res.status(200).json({ totalEmployees: count });
-  } catch (error) {
-    res.status(500).json({
-      message: "فشل في جلب العدد",
-      error: error.message,
-    });
-  }
-};
-
-///////////////////////
-////
-// جلب معلومات الموظف حسب ال id
-////
-///////////////////////
-
-exports.getEmployeeById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const employee = await Employee.findById(id).populate("department", "name");
-
-    if (!employee) {
-      return res.status(404).json({ message: "الموظف غير موجود" });
+    if (
+      !departmentId ||
+      !subDepartmentId ||
+      !name ||
+      !employeeId ||
+      !password
+    ) {
+      return res
+        .status(400)
+        .json({ message: "الرجاء تعبئة كل الحقول المطلوبة" });
     }
 
-    res.status(200).json(employee);
-  } catch (error) {
-    res.status(500).json({
-      message: "فشل في جلب الموظف",
-      error: error.message,
-    });
+    // أولاً، إنشاء الموظف
+    const newEmployee = { name, phone, age, employeeId, role, password };
+
+    // البحث عن القسم الرئيسي
+    const department = await Department.findById(departmentId);
+    if (!department)
+      return res.status(404).json({ message: "القسم غير موجود" });
+
+    // البحث عن القسم الفرعي داخل القسم
+    const subDept = department.subDepartments.id(subDepartmentId);
+    if (!subDept)
+      return res.status(404).json({ message: "القسم الفرعي غير موجود" });
+
+    // 🟢 هنا نضيف طباعة للتأكد أن employees موجود
+    console.log("Before push, subDept.employees:", subDept.employees);
+
+    // إضافة الموظف للقسم الفرعي
+    subDept.employees.push(newEmployee);
+
+    // حفظ التغييرات
+    await department.save();
+
+    console.log("Employee added successfully");
+
+    res.status(201).json({ message: "تمت إضافة الموظف بنجاح" });
+  } catch (err) {
+    console.error("Error in addEmployeeToSub:", err); 
+    res.status(500).json({ message: "حدث خطأ في السيرفر", error: err.message });
+  }
+};
+
+// جلب الموظفين حسب القسم الفرعي
+exports.getEmployeesBySubDepartment = async (req, res) => {
+  try {
+    const { deptId, subId } = req.params;
+
+    const department = await Department.findById(deptId);
+    if (!department)
+      return res.status(404).json({ message: "القسم غير موجود" });
+
+    const sub = department.subDepartments.id(subId);
+    if (!sub)
+      return res.status(404).json({ message: "القسم الفرعي غير موجود" });
+
+    res.status(200).json(sub.employees || []);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "حدث خطأ" });
   }
 };

@@ -21,13 +21,11 @@ app.use(
   morgan((tokens, req, res) => {
     const status = res.statusCode;
 
-    let color = "\x1b[37m"; 
+    let color = "\x1b[37m";
 
-    if (status >= 500)
-      color = "\x1b[31m";
-    else if (status >= 400)
-      color = "\x1b[33m"; 
-    else if (status >= 200) color = "\x1b[32m"; 
+    if (status >= 500) color = "\x1b[31m";
+    else if (status >= 400) color = "\x1b[33m";
+    else if (status >= 200) color = "\x1b[32m";
 
     const log = [
       tokens.method(req, res),
@@ -36,11 +34,9 @@ app.use(
       tokens["response-time"](req, res) + " ms",
     ].join(" ");
 
-    return color + log + "\x1b[0m"; 
+    return color + log + "\x1b[0m";
   }),
 );
-
-
 
 app.use("/api/departments", departmentRoutes);
 app.use("/api/admin", adminRouter);
@@ -63,9 +59,6 @@ connectDB()
     console.error(" DB connection failed:", err);
   });
 
-
-
-  
 // npm i nodemon === >   nodmon
 // npm install mongoose
 // npm install bcrypt

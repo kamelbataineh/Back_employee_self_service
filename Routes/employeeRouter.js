@@ -1,18 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const {
-  createEmployee,
-  getEmployeesByDepartment,
-  getEmployeesCount,
-  getEmployeeById,
-} = require("../Controllers/employeeController");
 const authAdmin = require("../middleware/authAdmin");
+const {
+  registerEmployee,
+  getEmployeesBySubDepartment,
+  addEmployeeToSub,
+} = require("../Controllers/employeeController");
 
-router.post("/create", authAdmin, createEmployee);
-
-router.get("/employees/department/:departmentId", getEmployeesByDepartment);
-router.get("/employees/count/all", getEmployeesCount);
-
-router.get("/employees/:id", getEmployeeById);
+router.post("/register", registerEmployee);
+router.post("/add-to-sub", authAdmin, addEmployeeToSub);
+router.get("/employees/:deptId/:subId", authAdmin, getEmployeesBySubDepartment);
 
 module.exports = router;

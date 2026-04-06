@@ -1,10 +1,23 @@
-// models\Department.js
-
 const mongoose = require("mongoose");
+
+// Schema للموظف الفرعي داخل القسم الفرعي
+const employeeSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  phone: String,
+  age: Number,
+  employeeId: { type: String, required: true },
+  role: String,
+  password: { type: String, required: true },
+});
+
+const subDepartmentSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  employees: { type: [employeeSchema], default: [] }, 
+});
 
 const departmentSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  employeeCount: { type: Number, default: 0 },
+  subDepartments: { type: [subDepartmentSchema], default: [] },
 });
 
 module.exports = mongoose.model("Department", departmentSchema);
