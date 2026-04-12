@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-// Schema للموظف الفرعي داخل القسم الفرعي
 const employeeSchema = new mongoose.Schema({
   name: { type: String, required: true },
   phone: String,
