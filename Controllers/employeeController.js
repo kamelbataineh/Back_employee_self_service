@@ -1,51 +1,69 @@
 const Employee = require("../models/Employee");
 const Department = require("../models/Department");
-const { v4: uuidv4 } = require("uuid");
 const bcrypt = require("bcrypt");
+const generateEmployeeId = require("../utils/generateEmployeeId");
 
-// تسجيل موظف (اختياري)
-exports.registerEmployee = async (req, res) => {
+///////////////////////
+// إضافة موظف لقسم فرعي (من الأدمن)
+///////////////////////
+const Employee = require("../models/Employee");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+
+exports.employeeLogin = async (req, res) => {
   try {
-    const {
-      name,
-      email,
-      phone,
-      age,
-      password,
-      departmentId,
-      subDepartmentName,
-    } = req.body;
+    const { employeeId, password } = req.body;
 
-    const existing = await Employee.findOne({ email });
-    if (existing)
-      return res.status(400).json({ message: "الإيميل موجود مسبقاً" });
+    if (!employeeId || !password) {
+      return res.status(400).json({
+        message: "رقم الموظف وكلمة المرور مطلوبين",
+      });
+    }
 
-    const employeeId = uuidv4();
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const employee = await Employee.findOne({ employeeId });
 
-    const employee = await Employee.create({
-      employeeId,
-      name,
-      email,
-      phone,
-      age,
-      password: hashedPassword,
-      departmentId,
-      subDepartmentName,
+    if (!employee) {
+      return res.status(404).json({
+        message: "الموظف غير موجود",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, employee.password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        message: "كلمة المرور غير صحيحة",
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        id: employee._id,
+        employeeId: employee.employeeId,
+        role: employee.role,
+      },
+      "SECRET_KEY_123",
+      { expiresIn: "7d" },
+    );
+
+    return res.status(200).json({
+      message: "تم تسجيل الدخول بنجاح",
+      token,
+      employee: {
+        id: employee._id,
+        name: employee.name,
+        employeeId: employee.employeeId,
+        role: employee.role,
+      },
     });
-
-    res.status(201).json({ message: "تم تسجيل الموظف", employee });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "حدث خطأ" });
+    return res.status(500).json({
+      message: "خطأ في السيرفر",
+      error: err.message,
+    });
   }
 };
-
-///////////////////////
-////
-// إضافة موظف لقسم فرعي
-////
-///////////////////////
 
 exports.addEmployeeToSub = async (req, res) => {
   try {
@@ -53,78 +71,104 @@ exports.addEmployeeToSub = async (req, res) => {
       departmentId,
       subDepartmentId,
       name,
+      email,
       phone,
       age,
-      employeeId,
       role,
       password,
     } = req.body;
 
-    if (
-      !departmentId ||
-      !subDepartmentId ||
-      !name ||
-      !employeeId ||
-      !password
-    ) {
-      return res
-        .status(400)
-        .json({ message: "الرجاء تعبئة كل الحقول المطلوبة" });
+    if (!departmentId || !subDepartmentId || !name || !email || !password) {
+      return res.status(400).json({
+        message: "الرجاء تعبئة الحقول المطلوبة",
+      });
     }
 
-    const newEmployee = { name, phone, age, employeeId, role, password };
-
     const department = await Department.findById(departmentId);
-    if (!department)
+    if (!department) {
       return res.status(404).json({ message: "القسم غير موجود" });
+    }
 
     const subDept = department.subDepartments.id(subDepartmentId);
-    if (!subDept)
+    if (!subDept) {
       return res.status(404).json({ message: "القسم الفرعي غير موجود" });
+    }
 
-    console.log("Before push, subDept.employees:", subDept.employees);
+    const exists = await Employee.findOne({ email });
+    if (exists) {
+      return res.status(400).json({
+        message: "الإيميل مستخدم مسبقاً",
+      });
+    }
 
-    subDept.employees.push(newEmployee);
+    const employeeId = await generateEmployeeId();
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const employee = await Employee.create({
+      name,
+      email,
+      phone,
+      age,
+      role,
+      password: hashedPassword,
+      employeeId,
+    });
+
+    subDept.employees.push({
+      _id: employee._id,
+      name: employee.name,
+      email: employee.email,
+      phone: employee.phone,
+      age: employee.age,
+      role: employee.role,
+      employeeId: employee.employeeId,
+      password: hashedPassword, // 🔥 مهم: لازم موجود لأنه required
+    });
 
     await department.save();
 
-    console.log("Employee added successfully");
-
-    res.status(201).json({ message: "تمت إضافة الموظف بنجاح" });
+    return res.status(201).json({
+      message: "تمت إضافة الموظف بنجاح",
+      employee,
+    });
   } catch (err) {
-    console.error("Error in addEmployeeToSub:", err);
-    res.status(500).json({ message: "حدث خطأ في السيرفر", error: err.message });
+    console.error(err);
+    return res.status(500).json({
+      message: "خطأ في السيرفر",
+      error: err.message,
+    });
   }
 };
-
 ///////////////////////
-////
-////
+// جلب موظفي قسم فرعي
 ///////////////////////
 exports.getEmployeesBySubDepartment = async (req, res) => {
   try {
     const { deptId, subId } = req.params;
 
     const department = await Department.findById(deptId);
-    if (!department)
+    if (!department) {
       return res.status(404).json({ message: "القسم غير موجود" });
+    }
 
     const sub = department.subDepartments.id(subId);
-    if (!sub)
+    if (!sub) {
       return res.status(404).json({ message: "القسم الفرعي غير موجود" });
+    }
 
     res.status(200).json(sub.employees || []);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "حدث خطأ" });
+    res.status(500).json({
+      message: "حدث خطأ",
+      error: err.message,
+    });
   }
 };
 
 ///////////////////////
-////
-////
+// جلب موظف بواسطة ID (من أي قسم)
 ///////////////////////
-
 exports.getEmployeeById = async (req, res) => {
   try {
     const empId = req.params.id;
@@ -163,7 +207,9 @@ exports.getEmployeeById = async (req, res) => {
 
     res.status(200).json(result);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "خطأ في السيرفر" });
+    res.status(500).json({
+      message: "خطأ في السيرفر",
+      error: err.message,
+    });
   }
 };

@@ -5,8 +5,11 @@ const {
   getEmployeesBySubDepartment,
   addEmployeeToSub,
   getEmployeeById,
+  employeeLogin,
 } = require("../Controllers/employeeController");
 
+
+router.post("/login", employeeController.employeeLogin);
 router.post("/add-to-sub", authAdmin, addEmployeeToSub);
 router.get("/employees/:deptId/:subId", authAdmin, getEmployeesBySubDepartment);
 router.get("/:id", authAdmin, getEmployeeById);

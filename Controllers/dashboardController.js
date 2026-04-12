@@ -42,10 +42,23 @@ exports.addSubDepartment = async (req, res) => {
       return res.status(404).json({ message: "القسم الكبير غير موجود" });
     }
 
+    // منع التكرار
+    const exists = department.subDepartments.find((sub) => sub.name === name);
+
+    if (exists) {
+      return res.status(400).json({
+        message: "هذا القسم الفرعي موجود مسبقاً",
+      });
+    }
+
     department.subDepartments.push({ name, employees: [] });
+
     await department.save();
 
-    res.status(200).json({ message: "تم إنشاء السب قسم", department });
+    res.status(200).json({
+      message: "تم إنشاء القسم الفرعي",
+      department,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "حدث خطأ" });
