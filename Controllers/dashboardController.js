@@ -1,57 +1,76 @@
 // Controllers\dashboardController.js
 
 const Department = require("../models/Department");
+const translateName = require("../utils/translateName");
 
-///////////////////////
-////
-////
-///////////////////////
+//////////////////////////////
+// CREATE DEPARTMENT
+//////////////////////////////
 exports.createDepartment = async (req, res) => {
   try {
-    const { name, subDepartments } = req.body;
-    const dept = await Department.create({ name, subDepartments });
-    res.status(201).json({ message: "تم إنشاء القسم", department: dept });
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ message: "Name required" });
+    }
+
+    const translated = await translateName(name);
+
+    const department = await Department.create({
+      name: translated,
+      subDepartments: [],
+    });
+
+    res.status(201).json(department);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "حدث خطأ" });
+    res.status(500).json({
+      message: "Server error",
+      error: err.message,
+    });
   }
 };
 
-///////////////////////
-////
-////
-///////////////////////
-
+//////////////////////////////
+// GET ALL
+//////////////////////////////
 exports.getAllDepartments = async (req, res) => {
   try {
-    const departments = await Department.find().lean();
+    const departments = await Department.find();
     res.status(200).json(departments);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "حدث خطأ" });
+    res.status(500).json({ message: err.message });
   }
 };
 
+//////////////////////////////
+// ADD SUB DEPARTMENT
+//////////////////////////////
 exports.addSubDepartment = async (req, res) => {
   try {
     const { departmentId } = req.params;
     const { name } = req.body;
 
     const department = await Department.findById(departmentId);
+
     if (!department) {
-      return res.status(404).json({ message: "القسم الكبير غير موجود" });
+      return res.status(404).json({ message: "القسم غير موجود" });
     }
 
-    // منع التكرار
-    const exists = department.subDepartments.find((sub) => sub.name === name);
+    const translated = await translateName(name);
+
+    const exists = department.subDepartments.find(
+      (sub) => sub.name.en === translated.en,
+    );
 
     if (exists) {
-      return res.status(400).json({
-        message: "هذا القسم الفرعي موجود مسبقاً",
-      });
+      return res.status(400).json({ message: "القسم الفرعي موجود مسبقاً" });
     }
 
-    department.subDepartments.push({ name, employees: [] });
+    department.subDepartments.push({
+      name: translated,
+      employees: [],
+    });
 
     await department.save();
 
@@ -60,16 +79,19 @@ exports.addSubDepartment = async (req, res) => {
       department,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "حدث خطأ" });
+    res.status(500).json({
+      message: "حدث خطأ",
+      error: err.message,
+    });
   }
 };
 
-// جلب قسم واحد حسب الـ ID
+//////////////////////////////
+// GET BY ID
+//////////////////////////////
 exports.getDepartmentById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const department = await Department.findById(id).lean();
+    const department = await Department.findById(req.params.id).lean();
 
     if (!department) {
       return res.status(404).json({ message: "القسم غير موجود" });
@@ -77,26 +99,32 @@ exports.getDepartmentById = async (req, res) => {
 
     res.status(200).json(department);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "حدث خطأ" });
+    res.status(500).json({ message: err.message });
   }
 };
 
+//////////////////////////////
+// GET EMPLOYEES
+//////////////////////////////
 exports.getEmployeesBySubDepartment = async (req, res) => {
   try {
     const { deptId, subId } = req.params;
 
     const department = await Department.findById(deptId);
+
     if (!department)
       return res.status(404).json({ message: "القسم غير موجود" });
 
     const subDept = department.subDepartments.id(subId);
+
     if (!subDept)
       return res.status(404).json({ message: "القسم الفرعي غير موجود" });
 
     res.status(200).json(subDept.employees);
   } catch (err) {
-    console.error("Error fetching employees:", err);
-    res.status(500).json({ message: "حدث خطأ في السيرفر", error: err.message });
+    res.status(500).json({
+      message: "خطأ في السيرفر",
+      error: err.message,
+    });
   }
 };

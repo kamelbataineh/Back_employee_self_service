@@ -8,8 +8,7 @@ const {
   employeeLogin,
 } = require("../Controllers/employeeController");
 
-
-router.post("/login", employeeController.employeeLogin);
+router.post("/login", employeeLogin);
 router.post("/add-to-sub", authAdmin, addEmployeeToSub);
 router.get("/employees/:deptId/:subId", authAdmin, getEmployeesBySubDepartment);
 router.get("/:id", authAdmin, getEmployeeById);

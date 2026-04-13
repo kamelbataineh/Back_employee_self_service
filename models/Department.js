@@ -1,16 +1,26 @@
+// models\Department.js
+
 const mongoose = require("mongoose");
 const { employeeSchema } = require("./Employee");
 
 const subDepartmentSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+  name: {
+    en: { type: String, required: true },
+    ar: { type: String, required: true },
+    fr: { type: String, default: "" },
+  },
   employees: {
-    type: [employeeSchema], 
+    type: [employeeSchema],
     default: [],
   },
 });
 
 const departmentSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+  name: {
+    en: { type: String, required: true },
+    ar: { type: String, required: true },
+    fr: { type: String, default: "" },
+  },
   subDepartments: {
     type: [subDepartmentSchema],
     default: [],
@@ -18,3 +28,4 @@ const departmentSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model("Department", departmentSchema);
+

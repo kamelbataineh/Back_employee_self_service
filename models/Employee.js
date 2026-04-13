@@ -1,8 +1,14 @@
+// models\Employee.js
+
 const mongoose = require("mongoose");
 
 const employeeSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
+    name: {
+      en: { type: String, required: true },
+      ar: { type: String, required: true },
+      fr: { type: String, default: "" },
+    },
     phone: String,
     age: Number,
     employeeId: { type: String, required: true, unique: true },
