@@ -5,47 +5,66 @@ const Department = require("../models/Department");
 const bcrypt = require("bcrypt");
 const generateEmployeeId = require("../utils/generateEmployeeId");
 const jwt = require("jsonwebtoken");
-///////////////////////
-// إضافة موظف لقسم فرعي (من الأدمن)
-///////////////////////
 
-exports.employeeLogin = async (req, res) => {
+exports.loginEmployee = async (req, res) => {
   try {
-    const { employeeId, password } = req.body;
+    const { identifier, password } = req.body;
+    // identifier = email OR employeeId
 
-    if (!employeeId || !password) {
-      return res
-        .status(400)
-        .json({ message: "رقم الموظف وكلمة المرور مطلوبين" });
+    if (!identifier || !password) {
+      return res.status(400).json({
+        message: "الرجاء إدخال الإيميل أو رقم الموظف وكلمة المرور",
+      });
     }
 
-    const employee = await Employee.findOne({ employeeId });
+    // 1. البحث بالإيميل أو employeeId
+    const employee = await Employee.findOne({
+      $or: [{ email: identifier }, { employeeId: identifier }],
+    });
+
     if (!employee) {
-      return res.status(404).json({ message: "الموظف غير موجود" });
+      return res.status(404).json({
+        message: "المستخدم غير موجود",
+      });
     }
 
+    // 2. التحقق من كلمة المرور
     const isMatch = await bcrypt.compare(password, employee.password);
+
     if (!isMatch) {
-      return res.status(400).json({ message: "كلمة المرور غير صحيحة" });
+      return res.status(401).json({
+        message: "كلمة المرور غير صحيحة",
+      });
     }
 
+    // 3. إنشاء JWT Token
     const token = jwt.sign(
       {
         id: employee._id,
+        email: employee.email,
         employeeId: employee.employeeId,
         role: employee.role,
       },
-      "SECRET_KEY_123",
+      process.env.JWT_SECRET,
       { expiresIn: "7d" },
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "تم تسجيل الدخول بنجاح",
       token,
-      employee,
+      employee: {
+        id: employee._id,
+        name: employee.name,
+        email: employee.email,
+        employeeId: employee.employeeId,
+        role: employee.role,
+      },
     });
   } catch (err) {
-    res.status(500).json({ message: "خطأ في السيرفر", error: err.message });
+    return res.status(500).json({
+      message: "خطأ في السيرفر",
+      error: err.message,
+    });
   }
 };
 
@@ -125,6 +144,60 @@ exports.getEmployeesBySubDepartment = async (req, res) => {
     res.status(500).json({
       message: "حدث خطأ",
       error: err.message,
+    });
+  }
+};
+
+exports.getMyProfile = async (req, res) => {
+  try {
+    const empId = req.employee.id;
+
+    const department = await Department.findOne({
+      "subDepartments.employees._id": empId,
+    });
+
+    if (!department) {
+      return res.status(404).json({ message: "الموظف غير موجود" });
+    }
+
+    let result = null;
+
+    department.subDepartments.forEach((sub) => {
+      const emp = sub.employees.find((e) => e._id.toString() === empId);
+
+      if (emp) {
+        result = {
+          employee: {
+            id: emp._id,
+            name: emp.name,
+            email: emp.email,
+            phone: emp.phone,
+            age: emp.age,
+            role: emp.role,
+            employeeId: emp.employeeId,
+          },
+
+          department: {
+            id: department._id,
+            name: department.name,
+          },
+
+          subDepartment: {
+            id: sub._id,
+            name: sub.name,
+          },
+        };
+      }
+    });
+
+    if (!result) {
+      return res.status(404).json({ message: "الموظف غير موجود" });
+    }
+
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
     });
   }
 };
