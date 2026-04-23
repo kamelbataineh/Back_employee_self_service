@@ -17,6 +17,7 @@ exports.createDepartment = async (req, res) => {
     const translated = await translateName(name);
 
     const department = await Department.create({
+      adminId: req.user.adminId, // 🔥 مهم جداً
       name: translated,
       subDepartments: [],
     });
@@ -36,7 +37,10 @@ exports.createDepartment = async (req, res) => {
 //////////////////////////////
 exports.getAllDepartments = async (req, res) => {
   try {
-    const departments = await Department.find();
+    const departments = await Department.find({
+      adminId: req.user.adminId,
+    });
+
     res.status(200).json(departments);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -51,7 +55,10 @@ exports.addSubDepartment = async (req, res) => {
     const { departmentId } = req.params;
     const { name } = req.body;
 
-    const department = await Department.findById(departmentId);
+    const department = await Department.findOne({
+      _id: departmentId,
+      adminId: req.user.adminId, // 🔥 مهم
+    });
 
     if (!department) {
       return res.status(404).json({ message: "القسم غير موجود" });
@@ -91,7 +98,10 @@ exports.addSubDepartment = async (req, res) => {
 //////////////////////////////
 exports.getDepartmentById = async (req, res) => {
   try {
-    const department = await Department.findById(req.params.id).lean();
+    const department = await Department.findOne({
+      _id: req.params.id,
+      adminId: req.user.adminId,
+    }).lean();
 
     if (!department) {
       return res.status(404).json({ message: "القسم غير موجود" });
@@ -102,7 +112,6 @@ exports.getDepartmentById = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
 //////////////////////////////
 // GET EMPLOYEES
 //////////////////////////////
@@ -110,15 +119,20 @@ exports.getEmployeesBySubDepartment = async (req, res) => {
   try {
     const { deptId, subId } = req.params;
 
-    const department = await Department.findById(deptId);
+    const department = await Department.findOne({
+      _id: deptId,
+      adminId: req.user.adminId, // 🔥 حماية
+    });
 
-    if (!department)
+    if (!department) {
       return res.status(404).json({ message: "القسم غير موجود" });
+    }
 
     const subDept = department.subDepartments.id(subId);
 
-    if (!subDept)
+    if (!subDept) {
       return res.status(404).json({ message: "القسم الفرعي غير موجود" });
+    }
 
     res.status(200).json(subDept.employees);
   } catch (err) {

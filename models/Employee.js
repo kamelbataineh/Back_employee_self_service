@@ -1,5 +1,3 @@
-// models\Employee.js
-
 const mongoose = require("mongoose");
 
 const employeeSchema = new mongoose.Schema(
@@ -9,11 +7,22 @@ const employeeSchema = new mongoose.Schema(
       ar: { type: String, required: true },
       fr: { type: String, default: "" },
     },
+
     phone: String,
     age: Number,
-    employeeId: { type: String, required: true, unique: true },
+
+    employeeId: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+
     role: String,
-    password: { type: String, required: true },
+
+    password: {
+      type: String,
+      required: true,
+    },
 
     email: {
       type: String,
@@ -21,9 +30,24 @@ const employeeSchema = new mongoose.Schema(
       sparse: true,
       default: undefined,
     },
+
+    admin: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      required: true,
+    },
+
+    workLocation: {
+      latitude: Number,
+      longitude: Number,
+    },
+
+    shift: {
+      startTime: String,
+      endTime: String,
+    },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("Employee", employeeSchema);
-module.exports.employeeSchema = employeeSchema;

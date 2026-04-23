@@ -10,7 +10,10 @@ const connectDB = require("./Configration/db");
 const departmentRoutes = require("./Routes/dashboardRouter");
 const adminRouter = require("./Routes/adminRouter");
 const employeeRouter = require("./Routes/employeeRouter");
+const attendanceRoutes = require("./Routes/attendanceRoutes");
 const apiRoutes = require("./Routes/apiRoutes");
+const placesRouter = require("./Routes/placesRouter");
+
 const morgan = require("morgan");
 const app = express();
 
@@ -41,6 +44,8 @@ app.use(
 app.use("/api/departments", departmentRoutes);
 app.use("/api/admin", adminRouter);
 app.use("/api/employee", employeeRouter);
+app.use("/api/attendance", attendanceRoutes);
+app.use("/api/places", placesRouter);
 app.use("/api", apiRoutes);
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
