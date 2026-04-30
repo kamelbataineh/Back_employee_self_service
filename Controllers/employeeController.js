@@ -165,53 +165,43 @@ exports.getMyProfile = async (req, res) => {
   try {
     const empId = req.employee.id;
 
-    const department = await Department.findOne({
-      "subDepartments.employees._id": empId,
-    });
-
-    if (!department) {
-      return res.status(404).json({ message: "الموظف غير موجود" });
-    }
+    const department = await Department.findOne();
 
     let result = null;
 
     department.subDepartments.forEach((sub) => {
-      const emp = sub.employees.find((e) => e._id.toString() === empId);
-
-      if (emp) {
-        result = {
-          employee: {
-            id: emp._id,
-            name: emp.name,
-            email: emp.email,
-            phone: emp.phone,
-            age: emp.age,
-            role: emp.role,
-            employeeId: emp.employeeId,
-          },
-
-          department: {
-            id: department._id,
-            name: department.name,
-          },
-
-          subDepartment: {
-            id: sub._id,
-            name: sub.name,
-          },
-        };
-      }
+      sub.employees.forEach((emp) => {
+        if (emp._id.toString() === empId.toString()) {
+          result = {
+            employee: {
+              id: emp._id,
+              name: emp.name,
+              email: emp.email,
+              phone: emp.phone,
+              age: emp.age,
+              role: emp.role,
+              employeeId: emp.employeeId,
+            },
+            department: {
+              id: department._id,
+              name: department.name,
+            },
+            subDepartment: {
+              id: sub._id,
+              name: sub.name,
+            },
+          };
+        }
+      });
     });
 
     if (!result) {
       return res.status(404).json({ message: "الموظف غير موجود" });
     }
 
-    res.status(200).json(result);
+    return res.status(200).json(result);
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    return res.status(500).json({ message: err.message });
   }
 };
 
@@ -261,11 +251,12 @@ exports.getEmployeeById = async (req, res) => {
     });
 
     if (!result) {
-      return res.status(404).json({ message: "Employee not found inside department" });
+      return res
+        .status(404)
+        .json({ message: "Employee not found inside department" });
     }
 
     return res.json(result);
-
   } catch (err) {
     console.log(err);
     return res.status(500).json({ message: "Server error" });

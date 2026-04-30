@@ -70,18 +70,23 @@ exports.loginAdmin = async (req, res) => {
 // ======================
 // SET COMPANY LOCATION
 // ======================
+// ======================
+// SET COMPANY LOCATION 📍
+// ======================
 exports.setCompanyLocation = async (req, res) => {
   try {
-    // 🔴 حماية من الخطأ
-    if (!req.user || !req.user.adminId) {
-      return res.status(401).json({
-        message: "Unauthorized - token مشكلة",
-      });
-    }
-
     const adminId = req.user.adminId;
 
     const { latitude, longitude, maxDistance } = req.body;
+
+    // 🔴 تحويل المسافة إلى متر + حدود آمنة
+    let distanceInMeters = Number(maxDistance || 100);
+
+    // ⛔ أقل من 2 متر
+    if (distanceInMeters < 2) distanceInMeters = 2;
+
+    // ⛔ أكبر من 1000 متر
+    if (distanceInMeters > 1000) distanceInMeters = 1000;
 
     const admin = await Admin.findById(adminId);
 
@@ -94,20 +99,21 @@ exports.setCompanyLocation = async (req, res) => {
       longitude,
     };
 
-    admin.maxDistance = maxDistance || 100;
+    // 💾 نخزنها بالمتر فقط
+    admin.maxDistance = distanceInMeters;
 
     await admin.save();
 
-    res.json({
-      message: "تم حفظ موقع الشركة ✔",
-      admin,
+    return res.json({
+      message: "✔ تم حفظ الموقع بنجاح",
+      companyLocation: admin.companyLocation,
+      maxDistance: admin.maxDistance, // 📍 بالمتر
     });
   } catch (err) {
     console.error("SET LOCATION ERROR:", err);
     res.status(500).json({ message: err.message });
   }
 };
-
 // ======================
 // SAVE ZONE (POLYGON)
 // ======================
@@ -138,5 +144,29 @@ exports.getZone = async (req, res) => {
 };
 
 // ======================
-// GET ZONE
+// GET COMPANY LOCATION
 // ======================
+exports.getCompanyLocation = async (req, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
+
+    const adminId = req.user.adminId;
+
+    const admin = await Admin.findById(adminId).select(
+      "companyLocation maxDistance",
+    );
+
+    if (!admin || !admin.companyLocation) {
+      return res.status(404).json({
+        message: "لم يتم تحديد موقع الشركة بعد",
+      });
+    }
+
+    res.json({
+      companyLocation: admin.companyLocation,
+      maxDistance: admin.maxDistance,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

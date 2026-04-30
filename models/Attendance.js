@@ -14,6 +14,14 @@ const attendanceSchema = new mongoose.Schema(
         latitude: Number,
         longitude: Number,
       },
+      distance: {
+        type: Number,
+        default: null,
+      },
+      allowed: {
+        type: Boolean,
+        default: null,
+      },
     },
 
     checkOut: {
@@ -22,6 +30,20 @@ const attendanceSchema = new mongoose.Schema(
         latitude: Number,
         longitude: Number,
       },
+      distance: {
+        type: Number,
+        default: null,
+      },
+      allowed: {
+        type: Boolean,
+        default: null,
+      },
+    },
+
+    status: {
+      type: String,
+      enum: ["checked-in", "checked-out", "rejected"],
+      default: "checked-in",
     },
   },
   { timestamps: true },

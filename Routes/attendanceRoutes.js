@@ -1,13 +1,12 @@
 const express = require("express");
 const router = express.Router();
 
+const auth = require("../middleware/authAdmin");
+
 const {
-  checkIn,
-  checkOut,
+  checkAttendanceLocation,
 } = require("../Controllers/attendanceController");
 
-router.post("/check-in", checkIn);
-
-router.post("/check-out", checkOut);
+router.post("/check", auth, checkAttendanceLocation);
 
 module.exports = router;
