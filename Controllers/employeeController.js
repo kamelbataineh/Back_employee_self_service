@@ -2,6 +2,7 @@
 const mongoose = require("mongoose");
 const Employee = require("../models/Employee");
 const Department = require("../models/Department");
+const Admin = require("../models/Admin");
 const bcrypt = require("bcrypt");
 const generateEmployeeId = require("../utils/generateEmployeeId");
 const jwt = require("jsonwebtoken");
@@ -165,7 +166,15 @@ exports.getMyProfile = async (req, res) => {
   try {
     const empId = req.employee.id;
 
-    const department = await Department.findOne();
+    console.log("EMP ID:", empId);
+
+    const department = await Department.findOne({
+      "subDepartments.employees._id": new mongoose.Types.ObjectId(empId)
+    });
+
+    if (!department) {
+      return res.status(404).json({ message: "الموظف غير موجود" });
+    }
 
     let result = null;
 
@@ -195,12 +204,9 @@ exports.getMyProfile = async (req, res) => {
       });
     });
 
-    if (!result) {
-      return res.status(404).json({ message: "الموظف غير موجود" });
-    }
-
     return res.status(200).json(result);
   } catch (err) {
+    console.error(err);
     return res.status(500).json({ message: err.message });
   }
 };
@@ -260,5 +266,38 @@ exports.getEmployeeById = async (req, res) => {
   } catch (err) {
     console.log(err);
     return res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
+exports.getCompanyLocationForEmployee = async (req, res) => {
+  try {
+    console.log("🔑 EMPLOYEE:", req.employee);
+
+    const employeeId = req.employee.id;
+
+    const employee = await Employee.findById(employeeId);
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    const admin = await Admin.findById(employee.admin).select(
+      "companyLocation maxDistance"
+    );
+
+    if (!admin || !admin.companyLocation) {
+      return res.status(404).json({
+        message: "لم يتم تحديد موقع الشركة بعد",
+      });
+    }
+
+    res.json({
+      companyLocation: admin.companyLocation,
+      maxDistance: admin.maxDistance,
+    });
+  } catch (err) {
+    console.error("❌ ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 };

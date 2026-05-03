@@ -8,12 +8,14 @@ const {
   getEmployeeById,
   getMyProfile,
   loginEmployee,
+  getCompanyLocationForEmployee,
+  
 } = require("../Controllers/employeeController");
 
 router.post("/login", loginEmployee);
 router.post("/add-to-sub", authAdmin, addEmployeeToSub);
 router.get("/employees/:deptId/:subId", authAdmin, getEmployeesBySubDepartment);
 router.get("/me", verifyToken, getMyProfile);
+router.get("/company-location", verifyToken, getCompanyLocationForEmployee);
 router.get("/:id", authAdmin, getEmployeeById);
-
 module.exports = router;
