@@ -1,3 +1,4 @@
+// Controllers\adminController.js
 const Admin = require("../models/Admin");
 const CompanyZone = require("../models/CompanyZone");
 const bcrypt = require("bcryptjs");
@@ -79,13 +80,11 @@ exports.setCompanyLocation = async (req, res) => {
 
     const { latitude, longitude, maxDistance } = req.body;
 
-    // 🔴 تحويل المسافة إلى متر + حدود آمنة
-    let distanceInMeters = Number(maxDistance || 100);
+    // ✅ تعريف المتغير أولاً
+    let distanceInMeters = Number(maxDistance || 0.25);
 
-    // ⛔ أقل من 2 متر
-    if (distanceInMeters < 2) distanceInMeters = 2;
-
-    // ⛔ أكبر من 1000 متر
+    // 🔽 حدود الأمان
+    if (distanceInMeters < 0.25) distanceInMeters = 0.25;
     if (distanceInMeters > 1000) distanceInMeters = 1000;
 
     const admin = await Admin.findById(adminId);
@@ -99,7 +98,6 @@ exports.setCompanyLocation = async (req, res) => {
       longitude,
     };
 
-    // 💾 نخزنها بالمتر فقط
     admin.maxDistance = distanceInMeters;
 
     await admin.save();
@@ -107,8 +105,9 @@ exports.setCompanyLocation = async (req, res) => {
     return res.json({
       message: "✔ تم حفظ الموقع بنجاح",
       companyLocation: admin.companyLocation,
-      maxDistance: admin.maxDistance, // 📍 بالمتر
+      maxDistance: admin.maxDistance,
     });
+
   } catch (err) {
     console.error("SET LOCATION ERROR:", err);
     res.status(500).json({ message: err.message });
@@ -170,3 +169,6 @@ exports.getCompanyLocation = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+
+
