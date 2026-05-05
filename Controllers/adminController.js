@@ -3,7 +3,8 @@ const Admin = require("../models/Admin");
 const CompanyZone = require("../models/CompanyZone");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
+const Attendance = require("../models/Attendance");
+const Department = require("../models/Department");
 // ======================
 // REGISTER
 // ======================
@@ -172,3 +173,77 @@ exports.getCompanyLocation = async (req, res) => {
 
 
 
+
+
+
+
+exports.getEmployeeAttendance = async (req, res) => {
+  try {
+    console.log("🔥 GET EMPLOYEE ATTENDANCE HIT");
+    console.log("ADMIN ID:", req.user.adminId);
+
+    const adminId = req.user.adminId;
+
+    const departments = await Department.find({ adminId });
+
+    console.log("📦 Departments found:", departments.length);
+
+    let employees = [];
+
+    departments.forEach((dept) => {
+      dept.subDepartments.forEach((sub) => {
+        sub.employees.forEach((emp) => {
+          employees.push(emp);
+        });
+      });
+    });
+
+    console.log("👥 Total employees:", employees.length);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    console.log("📅 Today from:", today);
+
+    const attendanceToday = await Attendance.find({
+      createdAt: { $gte: today },
+      status: "checked-in"
+    });
+
+    console.log("✅ Attendance records:", attendanceToday.length);
+
+    const presentIds = new Set(
+      attendanceToday.map((a) => a.employee.toString())
+    );
+
+    let present = 0;
+    let absent = 0;
+
+    const result = employees.map((emp) => {
+      const isPresent = presentIds.has(emp._id.toString());
+
+      if (isPresent) present++;
+      else absent++;
+
+      return {
+        id: emp._id,
+        name: emp.name?.en,
+        employeeId: emp.employeeId,
+        status: isPresent ? "present" : "absent",
+      };
+    });
+
+    console.log("📊 FINAL RESULT SENT");
+
+    res.json({
+      totalEmployees: employees.length,
+      present,
+      absent,
+      employees: result,
+    });
+
+  } catch (err) {
+    console.log("❌ DASHBOARD ERROR:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
