@@ -2,8 +2,10 @@ const express = require("express");
 const router = express.Router();
 
 const auth = require("../middleware/authAdmin");
-const { checkIn } = require("../Controllers/attendanceController");
+const { checkIn,getMyMonthlyStats,getMyMonthlyDays,getMyYearlyChart } = require("../Controllers/attendanceController");
 
 router.post("/check-in", auth, checkIn);
-
-module.exports = router;
+router.get("/stats/month", auth, getMyMonthlyStats);
+router.get("/stats/year", auth, getMyYearlyChart);
+router.get("/stats/month-days", auth,getMyMonthlyDays);
+module.exports = router;//

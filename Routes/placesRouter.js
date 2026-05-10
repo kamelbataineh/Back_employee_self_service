@@ -6,7 +6,6 @@ const {
   getPlaceDetails,
 } = require("../Controllers/placesController");
 
-// ================= ROUTES =================
 router.get("/search", searchPlaces);
 router.get("/details", getPlaceDetails);
 

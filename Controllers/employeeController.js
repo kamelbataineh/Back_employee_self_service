@@ -7,38 +7,37 @@ const bcrypt = require("bcrypt");
 const generateEmployeeId = require("../utils/generateEmployeeId");
 const jwt = require("jsonwebtoken");
 
+/**
+ * Employee login
+ */
 exports.loginEmployee = async (req, res) => {
   try {
     const { identifier, password } = req.body;
-    // identifier = email OR employeeId
 
     if (!identifier || !password) {
       return res.status(400).json({
-        message: "الرجاء إدخال الإيميل أو رقم الموظف وكلمة المرور",
+        message: "Please enter email or employee ID and password",
       });
     }
 
-    // 1. البحث بالإيميل أو employeeId
     const employee = await Employee.findOne({
       $or: [{ email: identifier }, { employeeId: identifier }],
     });
 
     if (!employee) {
       return res.status(404).json({
-        message: "المستخدم غير موجود",
+        message: "User not found",
       });
     }
 
-    // 2. التحقق من كلمة المرور
     const isMatch = await bcrypt.compare(password, employee.password);
 
     if (!isMatch) {
       return res.status(401).json({
-        message: "كلمة المرور غير صحيحة",
+        message: "Incorrect password",
       });
     }
 
-    // 3. إنشاء JWT Token
     const token = jwt.sign(
       {
         id: employee._id,
@@ -51,7 +50,7 @@ exports.loginEmployee = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: "تم تسجيل الدخول بنجاح",
+      message: "Logged in successfully",
       token,
       employee: {
         id: employee._id,
@@ -63,12 +62,15 @@ exports.loginEmployee = async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({
-      message: "خطأ في السيرفر",
+      message: "Server error",
       error: err.message,
     });
   }
 };
 
+/**
+ * Add employee to sub-department
+ */
 exports.addEmployeeToSub = async (req, res) => {
   try {
     const {
@@ -83,28 +85,27 @@ exports.addEmployeeToSub = async (req, res) => {
     } = req.body;
 
     if (!departmentId || !subDepartmentId || !name || !email || !password) {
-      return res.status(400).json({ message: "الرجاء تعبئة الحقول المطلوبة" });
+      return res.status(400).json({ message: "Please fill required fields" });
     }
 
     const department = await Department.findById(departmentId);
     if (!department) {
-      return res.status(404).json({ message: "القسم غير موجود" });
+      return res.status(404).json({ message: "Department not found" });
     }
 
     const subDept = department.subDepartments.id(subDepartmentId);
     if (!subDept) {
-      return res.status(404).json({ message: "القسم الفرعي غير موجود" });
+      return res.status(404).json({ message: "Sub-department not found" });
     }
 
     subDept.employees = subDept.employees || [];
 
     const exists = await Employee.findOne({ email });
     if (exists) {
-      return res.status(400).json({ message: "الإيميل مستخدم مسبقاً" });
+      return res.status(400).json({ message: "Email already exists" });
     }
 
     const employeeId = "EMP-" + Date.now();
-
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const employee = await Employee.create({
@@ -124,44 +125,47 @@ exports.addEmployeeToSub = async (req, res) => {
     await department.save();
 
     return res.status(201).json({
-      message: "تمت إضافة الموظف بنجاح",
+      message: "Employee added successfully",
       employee,
     });
   } catch (err) {
     console.error(err);
     return res.status(500).json({
-      message: "خطأ في السيرفر",
+      message: "Server error",
       error: err.message,
     });
   }
 };
 
-///////////////////////
-// جلب موظفي قسم فرعي
-///////////////////////
+/**
+ * Get employees by sub-department
+ */
 exports.getEmployeesBySubDepartment = async (req, res) => {
   try {
     const { deptId, subId } = req.params;
 
     const department = await Department.findById(deptId);
     if (!department) {
-      return res.status(404).json({ message: "القسم غير موجود" });
+      return res.status(404).json({ message: "Department not found" });
     }
 
     const sub = department.subDepartments.id(subId);
     if (!sub) {
-      return res.status(404).json({ message: "القسم الفرعي غير موجود" });
+      return res.status(404).json({ message: "Sub-department not found" });
     }
 
     res.status(200).json(sub.employees || []);
   } catch (err) {
     res.status(500).json({
-      message: "حدث خطأ",
+      message: "An error occurred",
       error: err.message,
     });
   }
 };
 
+/**
+ * Get logged-in employee profile
+ */
 exports.getMyProfile = async (req, res) => {
   try {
     const empId = req.employee.id;
@@ -169,11 +173,11 @@ exports.getMyProfile = async (req, res) => {
     console.log("EMP ID:", empId);
 
     const department = await Department.findOne({
-      "subDepartments.employees._id": new mongoose.Types.ObjectId(empId)
+      "subDepartments.employees._id": new mongoose.Types.ObjectId(empId),
     });
 
     if (!department) {
-      return res.status(404).json({ message: "الموظف غير موجود" });
+      return res.status(404).json({ message: "Employee not found" });
     }
 
     let result = null;
@@ -211,9 +215,9 @@ exports.getMyProfile = async (req, res) => {
   }
 };
 
-///////////////////////
-// جلب موظف بواسطة ID (من أي قسم)
-///////////////////////
+/**
+ * Get employee by ID
+ */
 exports.getEmployeeById = async (req, res) => {
   try {
     const empId = req.params.id;
@@ -241,12 +245,10 @@ exports.getEmployeeById = async (req, res) => {
               email: emp.email,
               employeeId: emp.employeeId,
             },
-
             department: {
               id: department._id,
               name: department.name,
             },
-
             subDepartment: {
               id: sub._id,
               name: sub.name,
@@ -269,8 +271,9 @@ exports.getEmployeeById = async (req, res) => {
   }
 };
 
-
-
+/**
+ * Get company location for employee
+ */
 exports.getCompanyLocationForEmployee = async (req, res) => {
   try {
     console.log("🔑 EMPLOYEE:", req.employee);
@@ -283,12 +286,12 @@ exports.getCompanyLocationForEmployee = async (req, res) => {
     }
 
     const admin = await Admin.findById(employee.admin).select(
-      "companyLocation maxDistance"
+      "companyLocation maxDistance",
     );
 
     if (!admin || !admin.companyLocation) {
       return res.status(404).json({
-        message: "لم يتم تحديد موقع الشركة بعد",
+        message: "Company location has not been set yet",
       });
     }
 

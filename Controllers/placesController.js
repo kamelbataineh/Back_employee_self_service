@@ -2,7 +2,9 @@ const axios = require("axios");
 
 const GOOGLE_API_KEY = "AIzaSyAwSsQdhAYpbUkTvdX70s3i_h1UkRGtNd4";
 
-// ================= SEARCH PLACES =================
+/**
+ * Search places using Google Places Autocomplete API
+ */
 const searchPlaces = async (req, res) => {
   try {
     const query = req.query.query;
@@ -15,7 +17,6 @@ const searchPlaces = async (req, res) => {
 
     console.log("Google Status:", response.data.status);
 
-    // 🔴 مهم جداً
     if (response.data.status !== "OK") {
       return res.json({
         status: response.data.status,
@@ -33,7 +34,9 @@ const searchPlaces = async (req, res) => {
   }
 };
 
-// ================= PLACE DETAILS =================
+/**
+ * Get place details by placeId using Google Places Details API
+ */
 const getPlaceDetails = async (req, res) => {
   try {
     const placeId = req.query.placeId;

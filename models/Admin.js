@@ -12,7 +12,6 @@ const adminSchema = new mongoose.Schema({
     required: true,
   },
 
- 
   companyLocation: {
     latitude: {
       type: Number,
