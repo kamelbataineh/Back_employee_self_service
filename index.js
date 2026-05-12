@@ -5,7 +5,9 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-
+const http = require("http");
+const { Server } = require("socket.io");
+const employeeSocket = require("./sockets/employeeSocket");
 const connectDB = require("./Configration/db");
 const departmentRoutes = require("./Routes/dashboardRouter");
 const adminRouter = require("./Routes/adminRouter");
@@ -16,6 +18,7 @@ const placesRouter = require("./Routes/placesRouter");
 
 const morgan = require("morgan");
 const app = express();
+const server = http.createServer(app);
 
 app.use(express.json());
 app.use(cors({ origin: "*", credentials: true }));
@@ -50,13 +53,21 @@ app.use("/api", apiRoutes);
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+  },
+});
+
+employeeSocket(io);
+
 const PORT = process.env.PORT || 5000;
 
 connectDB()
   .then(() => {
     console.log(" MongoDB connected");
 
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(` Server started on port ${PORT}`);
     });
   })
