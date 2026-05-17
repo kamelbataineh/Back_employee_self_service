@@ -304,3 +304,23 @@ exports.getCompanyLocationForEmployee = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// ==============================
+// Get All Company Employees
+// ==============================
+exports.getCompanyEmployees = async (req, res) => {
+  try {
+    const departments = await Department.find({
+      adminId: req.user.adminId,
+    });
+
+    res.status(200).json({
+      departments,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: "Server error",
+      error: err.message,
+    });
+  }
+};
