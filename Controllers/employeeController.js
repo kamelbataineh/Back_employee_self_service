@@ -244,6 +244,9 @@ exports.getEmployeeById = async (req, res) => {
               role: emp.role,
               email: emp.email,
               employeeId: emp.employeeId,
+              admin: emp.admin,
+              createdAt: emp.createdAt,
+              updatedAt: emp.updatedAt,
             },
             department: {
               id: department._id,

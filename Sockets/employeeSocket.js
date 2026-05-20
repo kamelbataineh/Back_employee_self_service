@@ -6,7 +6,6 @@ module.exports = (io) => {
   io.on("connection", (socket) => {
     console.log("⚡ Employee socket connected:", socket.id);
 
-    // 📍 جلب موقع الشركة للموظف
     socket.on("get_company_location", async (data) => {
       try {
         const employeeId = data.employeeId;

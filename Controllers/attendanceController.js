@@ -71,8 +71,7 @@ exports.checkIn = async (req, res) => {
       employee: employee._id,
 
       checkIn: {
-        time: new Date(),
-
+        time: new Date().toISOString(),
         location: {
           latitude,
           longitude,
@@ -105,7 +104,25 @@ exports.checkIn = async (req, res) => {
 // ======================
 exports.checkOut = async (req, res) => {
   try {
+    const { latitude, longitude } = req.body;
+
     const employeeId = req.user.id;
+
+    const employee = await Employee.findById(employeeId);
+
+    if (!employee) {
+      return res.status(404).json({
+        message: "Employee not found",
+      });
+    }
+
+    const admin = await Admin.findById(employee.admin);
+
+    if (!admin) {
+      return res.status(404).json({
+        message: "Admin not found",
+      });
+    }
 
     const attendance = await Attendance.findOne({
       employee: employeeId,
@@ -118,18 +135,41 @@ exports.checkOut = async (req, res) => {
       });
     }
 
+    // ===== حساب المسافة =====
+    const distance = haversineDistance(
+      admin.companyLocation.latitude,
+      admin.companyLocation.longitude,
+      latitude,
+      longitude,
+    );
+
+    const allowed = distance <= admin.maxDistance;
+
     attendance.checkOut = {
-      time: new Date(),
+      time: new Date().toISOString(),
+      location: {
+        latitude,
+        longitude,
+      },
+      distance,
+      allowed,
     };
+
+    // ===== تحديث الحالة =====
+    attendance.status = allowed ? "checked-out" : "rejected";
 
     await attendance.save();
 
-    res.json({
+    return res.json({
       message: "Checked out successfully",
+      allowed,
+      distance,
       attendance,
     });
   } catch (err) {
-    res.status(500).json({
+    console.log(err);
+
+    return res.status(500).json({
       message: err.message,
     });
   }
@@ -290,6 +330,143 @@ exports.getMyMonthlyDays = async (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+exports.getEmployeeMonthlyDays = async (req, res) => {
+  try {
+    const { employeeId, month, year } = req.query;
+
+    if (!employeeId || !month || !year) {
+      return res.status(400).json({
+        message: "employeeId, month and year are required",
+      });
+    }
+
+    const employee = await Employee.findById(employeeId);
+
+    if (!employee) {
+      return res.status(404).json({
+        message: "Employee not found",
+      });
+    }
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    const start = new Date(year, month - 1, 1);
+
+    const end = new Date(year, month, 1);
+
+    const records = await Attendance.find({
+      employee: employeeId,
+
+      "checkIn.time": {
+        $gte: start,
+        $lt: end,
+      },
+    }).sort({ "checkIn.time": 1 });
+
+    const map = {};
+
+    records.forEach((r) => {
+      const day = new Date(r.checkIn.time).getDate();
+
+      map[day] = {
+        present: r.status === "checked-in" ? 1 : 0,
+
+        // ===== DATE =====
+        fullDate: r.checkIn?.time || null,
+
+        // ===== CHECK IN =====
+        checkInTime: r.checkIn?.time || null,
+
+        checkInLocation: r.checkIn?.location || null,
+
+        checkInDistance: r.checkIn?.distance || null,
+
+        checkInAllowed: r.checkIn?.allowed || false,
+
+        // ===== CHECK OUT =====
+        checkOutTime: r.checkOut?.time || null,
+
+        // ===== STATUS =====
+        status: r.status || "absent",
+
+        // ===== RECORD INFO =====
+        createdAt: r.createdAt || null,
+
+        updatedAt: r.updatedAt || null,
+      };
+    });
+
+    const result = [];
+
+    for (let i = 1; i <= daysInMonth; i++) {
+      result.push({
+        day: i,
+
+        present: map[i]?.present || 0,
+
+        fullDate: map[i]?.fullDate || null,
+
+        checkInTime: map[i]?.checkInTime || null,
+
+        checkInLocation: map[i]?.checkInLocation || null,
+
+        checkInDistance: map[i]?.checkInDistance || null,
+
+        checkInAllowed: map[i]?.checkInAllowed || false,
+
+        checkOutTime: map[i]?.checkOutTime || null,
+
+        status: map[i]?.status || "absent",
+
+        createdAt: map[i]?.createdAt || null,
+
+        updatedAt: map[i]?.updatedAt || null,
+      });
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.log(err);
+
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+exports.hasCheckedInToday = async (req, res) => {
+  try {
+    const employeeId = req.user.id;
+
+    // بداية ونهاية اليوم
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+
+    const attendance = await Attendance.findOne({
+      employee: employeeId,
+      "checkIn.time": { $gte: start, $lte: end },
+    });
+
+    if (!attendance) {
+      return res.json({
+        checkedIn: false,
+      });
+    }
+
+    return res.json({
+      checkedIn: true,
+      attendance,
+    });
+  } catch (err) {
+    return res.status(500).json({
       message: err.message,
     });
   }
