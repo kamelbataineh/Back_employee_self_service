@@ -10,6 +10,7 @@ const {
   getMyYearlyChart,
   getEmployeeMonthlyDays,
   hasCheckedInToday,
+  getAttendanceByDay,
 } = require("../Controllers/attendanceController");
 
 router.post("/check-in", auth, checkIn);
@@ -19,4 +20,6 @@ router.get("/stats/month", auth, getMyMonthlyStats);
 router.get("/stats/year", auth, getMyYearlyChart);
 router.get("/stats/month-days", auth, getMyMonthlyDays);
 router.get("/admin/month-days", auth, getEmployeeMonthlyDays);
+router.get("/day", auth, getAttendanceByDay);
+
 module.exports = router; //

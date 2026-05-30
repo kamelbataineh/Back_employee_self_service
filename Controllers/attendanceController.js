@@ -71,7 +71,7 @@ exports.checkIn = async (req, res) => {
       employee: employee._id,
 
       checkIn: {
-        time: new Date().toISOString(),
+        time: new Date(),
         location: {
           latitude,
           longitude,
@@ -111,31 +111,29 @@ exports.checkOut = async (req, res) => {
     const employee = await Employee.findById(employeeId);
 
     if (!employee) {
-      return res.status(404).json({
-        message: "Employee not found",
-      });
+      return res.status(404).json({ message: "Employee not found" });
     }
 
     const admin = await Admin.findById(employee.admin);
 
     if (!admin) {
-      return res.status(404).json({
-        message: "Admin not found",
-      });
+      return res.status(404).json({ message: "Admin not found" });
     }
 
+    // 🔴 أهم نقطة: لازم يكون عامل Check-In ومش عامل Check-Out
     const attendance = await Attendance.findOne({
       employee: employeeId,
+      status: "checked-in",
       "checkOut.time": null,
     }).sort({ createdAt: -1 });
 
     if (!attendance) {
-      return res.status(404).json({
-        message: "No active check-in found",
+      return res.status(400).json({
+        message: "No active check-in found. Please check in first.",
+        allowed: false,
       });
     }
 
-    // ===== حساب المسافة =====
     const distance = haversineDistance(
       admin.companyLocation.latitude,
       admin.companyLocation.longitude,
@@ -146,7 +144,7 @@ exports.checkOut = async (req, res) => {
     const allowed = distance <= admin.maxDistance;
 
     attendance.checkOut = {
-      time: new Date().toISOString(),
+      time: new Date(),
       location: {
         latitude,
         longitude,
@@ -155,23 +153,17 @@ exports.checkOut = async (req, res) => {
       allowed,
     };
 
-    // ===== تحديث الحالة =====
-    attendance.status = allowed ? "checked-out" : "rejected";
+    attendance.status = "checked-out";
 
     await attendance.save();
 
     return res.json({
       message: "Checked out successfully",
       allowed,
-      distance,
       attendance,
     });
   } catch (err) {
-    console.log(err);
-
-    return res.status(500).json({
-      message: err.message,
-    });
+    return res.status(500).json({ message: err.message });
   }
 };
 
@@ -465,6 +457,36 @@ exports.hasCheckedInToday = async (req, res) => {
       checkedIn: true,
       attendance,
     });
+  } catch (err) {
+    return res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+exports.getAttendanceByDay = async (req, res) => {
+  try {
+    const employeeId = req.user.id;
+    const { date } = req.query; // format: YYYY-MM-DD
+
+    if (!date) {
+      return res.status(400).json({
+        message: "date is required",
+      });
+    }
+
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    const record = await Attendance.findOne({
+      employee: employeeId,
+      "checkIn.time": { $gte: start, $lte: end },
+    });
+
+    return res.json(record || null);
   } catch (err) {
     return res.status(500).json({
       message: err.message,
