@@ -71,7 +71,7 @@ exports.checkIn = async (req, res) => {
       employee: employee._id,
 
       checkIn: {
-        time: new Date(),
+        time: new Date(req.body.clientTime),
         location: {
           latitude,
           longitude,
@@ -144,7 +144,7 @@ exports.checkOut = async (req, res) => {
     const allowed = distance <= admin.maxDistance;
 
     attendance.checkOut = {
-      time: new Date(),
+      time: new Date(req.body.clientTime),
       location: {
         latitude,
         longitude,
