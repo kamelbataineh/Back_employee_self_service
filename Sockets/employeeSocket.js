@@ -15,14 +15,23 @@ module.exports = (io) => {
       console.log("📥 joined room:", employeeId);
     });
 
-    // 🔥 FAST VERSION (no Employee query)
     socket.on("get_company_location", async (data) => {
       try {
-        const adminId = data.adminId; // 🔥 أرسلها من Flutter
+        const employeeId = data.employeeId;
 
-        const admin = await Admin.findById(adminId)
+        const employee = await Employee.findById(employeeId)
+          .select("admin")
+          .lean();
+
+        if (!employee) {
+          return socket.emit("company_location_error", {
+            message: "Employee not found",
+          });
+        }
+
+        const admin = await Admin.findById(employee.admin)
           .select("companyLocation maxDistance")
-          .lean(); // 🔥 أسرع
+          .lean();
 
         if (!admin || !admin.companyLocation) {
           return socket.emit("company_location_error", {
@@ -30,13 +39,12 @@ module.exports = (io) => {
           });
         }
 
-        // 🔥 direct emit (no need to re-query employee)
         socket.emit("company_location_success", {
           companyLocation: admin.companyLocation,
           maxDistance: admin.maxDistance,
         });
       } catch (err) {
-        console.error("❌ SOCKET ERROR:", err);
+        console.error(err);
         socket.emit("company_location_error", {
           message: err.message,
         });
