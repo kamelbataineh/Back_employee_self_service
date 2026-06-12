@@ -32,7 +32,13 @@ exports.checkIn = async (req, res) => {
     const { latitude, longitude } = req.body;
 
     const employeeId = req.user.id;
-
+    console.log("========== CHECK IN ==========");
+    console.log("Employee ID:", employeeId);
+    console.log("Latitude:", latitude);
+    console.log("Longitude:", longitude);
+    console.log("Client Time:", req.body.clientTime);
+    console.log("Server Time:", new Date());
+    console.log("==============================");
     const employee = await Employee.findById(employeeId);
 
     if (!employee) {
@@ -66,12 +72,18 @@ exports.checkIn = async (req, res) => {
     const allowed = distance <= admin.maxDistance;
 
     let status = allowed ? "checked-in" : "rejected";
+    const clientTime = req.body.clientTime;
 
+    // تحويل microseconds → milliseconds
+    const fixedTime = clientTime?.replace(/\.(\d{3})\d+/, ".$1");
+
+    // fallback لو فشل
+    const checkInTime = new Date(fixedTime || clientTime);
     const attendance = await Attendance.create({
       employee: employee._id,
 
       checkIn: {
-        time: new Date(req.body.clientTime),
+        time: checkInTime,
         location: {
           latitude,
           longitude,
@@ -107,7 +119,13 @@ exports.checkOut = async (req, res) => {
     const { latitude, longitude } = req.body;
 
     const employeeId = req.user.id;
-
+    console.log("========== CHECK IN ==========");
+    console.log("Employee ID:", employeeId);
+    console.log("Latitude:", latitude);
+    console.log("Longitude:", longitude);
+    console.log("Client Time:", req.body.clientTime);
+    console.log("Server Time:", new Date());
+    console.log("==============================");
     const employee = await Employee.findById(employeeId);
 
     if (!employee) {
@@ -119,7 +137,11 @@ exports.checkOut = async (req, res) => {
     if (!admin) {
       return res.status(404).json({ message: "Admin not found" });
     }
+    const clientTime = req.body.clientTime;
 
+    const fixedTime = clientTime?.replace(/\.(\d{3})\d+/, ".$1");
+
+    const checkOutTime = new Date(fixedTime || clientTime);
     // 🔴 أهم نقطة: لازم يكون عامل Check-In ومش عامل Check-Out
     const attendance = await Attendance.findOne({
       employee: employeeId,
@@ -144,7 +166,7 @@ exports.checkOut = async (req, res) => {
     const allowed = distance <= admin.maxDistance;
 
     attendance.checkOut = {
-      time: new Date(req.body.clientTime),
+      time: checkOutTime,
       location: {
         latitude,
         longitude,

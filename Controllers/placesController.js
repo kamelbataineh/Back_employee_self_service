@@ -11,8 +11,7 @@ const searchPlaces = async (req, res) => {
 
     if (!query) return res.json([]);
 
-    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${query}&key=${GOOGLE_API_KEY}&components=country:jo`;
-
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${query}&key=${GOOGLE_API_KEY}`;
     const response = await axios.get(url);
 
     console.log("Google Status:", response.data.status);
@@ -72,7 +71,62 @@ const getPlaceDetails = async (req, res) => {
   }
 };
 
+const getPlaceTime = async (req, res) => {
+  try {
+    let { lat, lng } = req.query;
+
+    // ✅ دعم placeId كـ fallback (اختياري قوي)
+    if (!lat || !lng) {
+      const placeId = req.query.placeId;
+
+      if (!placeId) {
+        return res.status(400).json({
+          status: "ERROR",
+          message: "lat & lng or placeId required",
+        });
+      }
+
+      const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${GOOGLE_API_KEY}`;
+
+      const details = await axios.get(detailsUrl);
+
+      const loc = details.data?.result?.geometry?.location;
+
+      if (!loc) {
+        return res
+          .status(400)
+          .json({ status: "ERROR", message: "invalid placeId" });
+      }
+
+      lat = loc.lat;
+      lng = loc.lng;
+    }
+
+    const timestamp = Math.floor(Date.now() / 1000);
+    const url = `https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${timestamp}&key=${GOOGLE_API_KEY}`;
+    const response = await axios.get(url);
+    if (response.data.status !== "OK") {
+      return res.status(400).json({ status: response.data.status });
+    }
+
+    const { rawOffset, dstOffset, timeZoneId } = response.data;
+    const localTime = new Date(timestamp * 1000).toLocaleString("en-US", {
+      timeZone: timeZoneId,
+    });
+
+    return res.json({
+      status: "OK",
+      timeZone: timeZoneId,
+      localTime,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Time failed" });
+  }
+};
+
 module.exports = {
   getPlaceDetails,
   searchPlaces,
+  getPlaceTime,
 };

@@ -13,19 +13,35 @@ const adminSchema = new mongoose.Schema({
   },
 
   companyLocation: {
-    latitude: {
-      type: Number,
-      default: null,
-    },
-    longitude: {
-      type: Number,
-      default: null,
-    },
+    latitude: Number,
+    longitude: Number,
   },
 
   maxDistance: {
     type: Number,
     default: 100,
+  },
+
+  companyTimezone: {
+    type: String,
+    default: "Asia/Amman",
+  },
+
+  workSchedule: {
+    startTime: {
+      type: String,
+      default: "09:00",
+    },
+
+    endTime: {
+      type: String,
+      default: "17:00",
+    },
+
+    lateAfterMinutes: {
+      type: Number,
+      default: 10,
+    },
   },
 
   createdAt: {
