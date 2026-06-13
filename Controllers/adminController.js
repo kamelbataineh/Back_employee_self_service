@@ -2,10 +2,23 @@ const Admin = require("../models/Admin");
 const CompanyZone = require("../models/CompanyZone");
 const Attendance = require("../models/Attendance");
 const Department = require("../models/Department");
-
+const moment = require("moment-timezone");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+exports.getAdminInfo = async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.user.adminId).select("-password");
+
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    res.json(admin);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 // ======================
 // Register Admin
 // ======================
@@ -408,5 +421,33 @@ exports.getWorkSchedule = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getCurrentTime = async (req, res) => {
+  try {
+    const timezone = req.query.timezone;
+
+    if (!timezone) {
+      return res.status(400).json({
+        status: "ERROR",
+        message: "timezone required",
+      });
+    }
+
+    const currentTime = moment()
+      .tz(timezone)
+      .format("dddd, DD MMM YYYY hh:mm:ss A");
+
+    res.json({
+      status: "OK",
+      timezone,
+      time: currentTime,
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: "ERROR",
+      message: err.message,
+    });
   }
 };

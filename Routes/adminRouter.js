@@ -12,14 +12,18 @@ const {
   saveCompanyPlace,
   setWorkSchedule,
   getWorkSchedule,
+  getAdminInfo,
+  getCurrentTime,
 } = require("../Controllers/adminController");
 const auth = require("../middleware/authAdmin");
 
+router.get("/info", auth, getAdminInfo);
 router.post("/register", registerAdmin);
 router.post("/login", loginAdmin);
 router.post("/set-location", auth, setCompanyLocation);
 router.get("/company-location", auth, getCompanyLocation);
 router.get("/employee-attendance", auth, getEmployeeAttendance);
+router.get("/time/current", getCurrentTime);
 router.post("/timezone", auth, setCompanyTimezone);
 router.get("/timezone", auth, getCompanyTimezone);
 router.post("/work-schedule", auth, setWorkSchedule);
